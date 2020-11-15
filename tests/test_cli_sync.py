@@ -11,13 +11,13 @@ from .utils import invoke
 def test_run_as_module_sync():
     """piptools can be run as ``python -m piptools ...``."""
 
-    status, output = invoke([sys.executable, "-m", "piptools", "sync", "--help"])
+    status, out, err = invoke([sys.executable, "-m", "piptools", "sync", "--help"])
 
     # Should have run pip-compile successfully.
-    output = output.decode("utf-8")
-    assert output.startswith("Usage:")
-    assert "Synchronize virtual environment with" in output
     assert status == 0
+    assert out.startswith(b"Usage:")
+    assert b"Synchronize virtual environment with" in out
+    assert err == b""
 
 
 @mock.patch("piptools.sync.check_call")
@@ -28,8 +28,9 @@ def test_quiet_option(check_call, runner):
         req_in.write("six==1.10.0")
 
     out = runner.invoke(cli, ["-q"])
-    assert not out.stderr_bytes
     assert out.exit_code == 0
+    assert out.stdout == ""
+    assert out.stderr == ""
 
     # for every call to pip ensure the `-q` flag is set
     assert check_call.call_count == 2
@@ -48,8 +49,9 @@ def test_quiet_option_when_up_to_date(check_call, runner):
     with mock.patch("piptools.sync.diff", return_value=(set(), set())):
         out = runner.invoke(cli, ["-q"])
 
-    assert not out.stderr_bytes
     assert out.exit_code == 0
+    assert out.stdout == ""
+    assert out.stderr == ""
     check_call.assert_not_called()
 
 
@@ -60,8 +62,9 @@ def test_no_requirements_file(runner):
     """
     out = runner.invoke(cli)
 
-    assert "No requirement files given" in out.stderr
     assert out.exit_code == 2
+    assert out.stdout == ""
+    assert "No requirement files given" in out.stderr
 
 
 def test_input_files_with_dot_in_extension(runner):
@@ -73,8 +76,9 @@ def test_input_files_with_dot_in_extension(runner):
 
     out = runner.invoke(cli, ["requirements.in"])
 
-    assert "ERROR: Some input files have the .in extension" in out.stderr
     assert out.exit_code == 2
+    assert out.stdout == ""
+    assert "ERROR: Some input files have the .in extension" in out.stderr
 
 
 def test_force_files_with_dot_in_extension(runner):
@@ -89,8 +93,9 @@ def test_force_files_with_dot_in_extension(runner):
     with mock.patch("piptools.sync.check_call"):
         out = runner.invoke(cli, ["requirements.in", "--force"])
 
-    assert "WARNING: Some input files have the .in extension" in out.stderr
     assert out.exit_code == 0
+    assert out.stdout == ""
+    assert "WARNING: Some input files have the .in extension" in out.stderr
 
 
 @pytest.mark.parametrize(
@@ -118,9 +123,12 @@ def test_merge_error(req_lines, should_raise, runner):
 
     if should_raise:
         assert out.exit_code == 2
+        assert out.stdout == ""
         assert "Incompatible requirements found" in out.stderr
     else:
         assert out.exit_code == 1
+        assert "Would uninstall:" in out.stdout
+        assert out.stderr == ""
 
 
 @pytest.mark.parametrize(
@@ -165,7 +173,11 @@ def test_pip_install_flags(check_call, cli_flags, expected_install_flags, runner
     with open("requirements.txt", "w") as req_in:
         req_in.write("six==1.10.0")
 
-    runner.invoke(cli, cli_flags)
+    out = runner.invoke(cli, cli_flags)
+
+    assert out.exit_code == 0
+    assert out.stdout == ""
+    assert out.stderr == ""
 
     call_args = [call[0][0] for call in check_call.call_args_list]
     called_install_options = [args[6:] for args in call_args if args[3] == "install"]
@@ -196,7 +208,10 @@ def test_pip_install_flags_in_requirements_file(check_call, runner, install_flag
         reqs.write("six==1.10.0")
 
     out = runner.invoke(cli)
-    assert out.exit_code == 0, out
+
+    assert out.exit_code == 0
+    assert out.stdout == ""
+    assert out.stderr == ""
 
     # Make sure pip install command has expected options
     call_args = [call[0][0] for call in check_call.call_args_list]
@@ -214,7 +229,11 @@ def test_sync_ask_declined(check_call, runner):
     with open("requirements.txt", "w") as req_in:
         req_in.write("small-fake-a==1.10.0")
 
-    runner.invoke(cli, ["--ask"], input="n\n")
+    out = runner.invoke(cli, ["--ask"], input="n\n")
+
+    assert out.exit_code == 1
+    assert "Would uninstall:" in out.stdout
+    assert out.stderr == ""
 
     check_call.assert_not_called()
 
@@ -228,8 +247,11 @@ def test_sync_ask_accepted(check_call, runner):
     with open("requirements.txt", "w") as req_in:
         req_in.write("small-fake-a==1.10.0")
 
-    runner.invoke(cli, ["--ask", "--dry-run"], input="y\n")
+    out = runner.invoke(cli, ["--ask", "--dry-run"], input="y\n")
 
+    assert out.exit_code == 0
+    assert "Would uninstall:" in out.stdout
+    assert out.stderr == ""
     assert check_call.call_count == 2
 
 
@@ -243,3 +265,5 @@ def test_sync_dry_run_returns_non_zero_exit_code(runner):
     out = runner.invoke(cli, ["--dry-run"])
 
     assert out.exit_code == 1
+    assert "Would uninstall:" in out.stdout
+    assert out.stderr == ""

@@ -10,8 +10,8 @@ def test_remove_legacy_cache_dir():
     """
     os.mkdir(os.path.expanduser("~/.pip-tools"))
 
-    status, output = invoke([sys.executable, "-m", "piptools"])
+    status, out, err = invoke([sys.executable, "-m", "piptools"])
 
-    output = output.decode("utf-8")
-    assert output.startswith("Removing old cache dir")
     assert status == 0
+    assert out.startswith(b"Removing old cache dir")
+    assert err == b""
