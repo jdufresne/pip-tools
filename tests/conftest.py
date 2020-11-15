@@ -1,3 +1,5 @@
+import argparse
+import io
 import json
 import os
 import sys
@@ -7,7 +9,6 @@ from subprocess import check_call
 from textwrap import dedent
 
 import pytest
-from click.testing import CliRunner
 from pip._internal.models.candidate import InstallationCandidate
 from pip._internal.req.constructors import (
     install_req_from_editable,
@@ -167,11 +168,40 @@ def from_editable():
     return install_req_from_editable
 
 
+# TODO: Don't use capsys, it interferes with debug printing.
+class CliRunnerResult:
+    def __init__(self, exit_code, capsys):
+        self.exit_code = exit_code
+        self.stdout, self.stderr = capsys.readouterr()
+
+
+class CliRunner:
+    def __init__(self, capsys, monkeypatch):
+        self.capsys = capsys
+        self.monkeypatch = monkeypatch
+
+    def invoke(self, mod, args=None, input=None):
+        parser = argparse.ArgumentParser(mod.__name__)
+        mod.add_args(parser)
+        if args is None:
+            args = []
+        args = parser.parse_args(args)
+        with self.monkeypatch.context() as m:
+            if input is not None:
+                m.setattr("sys.stdin", io.StringIO(input))
+            try:
+                mod.cli(args)
+            except SystemExit as e:
+                exit_code = e.code
+            else:
+                exit_code = 0
+        return CliRunnerResult(exit_code, self.capsys)
+
+
 @pytest.fixture
-def runner():
-    cli_runner = CliRunner(mix_stderr=False)
-    with cli_runner.isolated_filesystem():
-        yield cli_runner
+def runner(tmpdir_cwd, capsys, monkeypatch):
+    cli_runner = CliRunner(capsys, monkeypatch)
+    return cli_runner
 
 
 @pytest.fixture

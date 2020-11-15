@@ -6,8 +6,7 @@ from itertools import chain
 
 from pip._vendor import six
 
-from .click import unstyle
-from .logging import log
+from .logging import log, unstyle
 from .utils import (
     UNSAFE_PACKAGES,
     comment,
@@ -53,7 +52,7 @@ class OutputWriter(object):
         self,
         src_files,
         dst_file,
-        click_ctx,
+        cli_args,
         dry_run,
         emit_header,
         emit_index_url,
@@ -70,7 +69,7 @@ class OutputWriter(object):
     ):
         self.src_files = src_files
         self.dst_file = dst_file
-        self.click_ctx = click_ctx
+        self.cli_args = cli_args
         self.dry_run = dry_run
         self.emit_header = emit_header
         self.emit_index_url = emit_index_url
@@ -96,7 +95,7 @@ class OutputWriter(object):
             yield comment("#")
             compile_command = os.environ.get(
                 "CUSTOM_COMPILE_COMMAND"
-            ) or get_compile_command(self.click_ctx)
+            ) or get_compile_command(self.cli_args)
             yield comment("#    {}".format(compile_command))
             yield comment("#")
 

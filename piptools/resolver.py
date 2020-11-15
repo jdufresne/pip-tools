@@ -3,12 +3,11 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 import copy
 import os
-from functools import partial
 from itertools import chain, count, groupby
 
 from pip._internal.req.constructors import install_req_from_line
 
-from . import click
+from .colorama import colorama
 from .logging import log
 from .utils import (
     UNSAFE_PACKAGES,
@@ -18,9 +17,6 @@ from .utils import (
     is_url_requirement,
     key_from_ireq,
 )
-
-green = partial(click.style, fg="green")
-magenta = partial(click.style, fg="magenta")
 
 
 class RequirementSummary(object):
@@ -169,7 +165,11 @@ class Resolver(object):
                 )
 
             log.debug("")
-            log.debug(magenta("{:^60}".format("ROUND {}".format(current_round))))
+            log.debug(
+                "{}{:^60}".format(
+                    colorama.Fore.MAGENTA, "ROUND {}".format(current_round)
+                )
+            )
             # If a package version (foo==2.0) was built in a previous round,
             # and in this round a different version of foo needs to be built
             # (i.e. foo==1.0), the directory will exist already, which will
@@ -381,8 +381,9 @@ class Resolver(object):
         # from there
         if ireq not in self.dependency_cache:
             log.debug(
-                "{} not in cache, need to check index".format(format_requirement(ireq)),
-                fg="yellow",
+                "{}{} not in cache, need to check index".format(
+                    colorama.Fore.YELLOW, format_requirement(ireq)
+                )
             )
             dependencies = self.repository.get_dependencies(ireq)
             self.dependency_cache[ireq] = sorted(str(ireq.req) for ireq in dependencies)

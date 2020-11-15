@@ -1,9 +1,11 @@
+from __future__ import print_function
+
 import os
 from shutil import rmtree
 
 from pip._internal.utils.appdirs import user_cache_dir
 
-from .click import secho
+from .colorama import colorama
 
 # The user_cache_dir helper comes straight from pip itself
 CACHE_DIR = user_cache_dir("pip-tools")
@@ -16,10 +18,9 @@ CACHE_DIR = user_cache_dir("pip-tools")
 LEGACY_CACHE_DIR = os.path.expanduser("~/.pip-tools")
 
 if os.path.exists(LEGACY_CACHE_DIR):
-    secho(
-        "Removing old cache dir {} (new cache dir is {})".format(
-            LEGACY_CACHE_DIR, CACHE_DIR
-        ),
-        fg="yellow",
+    print(
+        "{}Removing old cache dir {} (new cache dir is {})".format(
+            colorama.Fore.YELLOW, LEGACY_CACHE_DIR, CACHE_DIR
+        )
     )
     rmtree(LEGACY_CACHE_DIR)

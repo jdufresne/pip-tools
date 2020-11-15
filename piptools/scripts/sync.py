@@ -9,7 +9,7 @@ import sys
 from pip._internal.commands import create_command
 from pip._internal.utils.misc import get_installed_distributions
 
-from .. import click, sync
+from .. import sync
 from .._compat import parse_requirements
 from ..exceptions import PipToolsError
 from ..logging import log
@@ -19,74 +19,75 @@ from ..utils import flat_map
 DEFAULT_REQUIREMENTS_FILE = "requirements.txt"
 
 
-@click.command(context_settings={"help_option_names": ("-h", "--help")})
-@click.version_option()
-@click.option(
-    "-a",
-    "--ask",
-    is_flag=True,
-    help="Show what would happen, then ask whether to continue",
-)
-@click.option(
-    "-n",
-    "--dry-run",
-    is_flag=True,
-    help="Only show what would happen, don't change anything",
-)
-@click.option("--force", is_flag=True, help="Proceed even if conflicts are found")
-@click.option(
-    "-f",
-    "--find-links",
-    multiple=True,
-    help="Look for archives in this directory or on this HTML page",
-)
-@click.option("-i", "--index-url", help="Change index URL (defaults to PyPI)")
-@click.option(
-    "--extra-index-url", multiple=True, help="Add additional index URL to search"
-)
-@click.option(
-    "--trusted-host",
-    multiple=True,
-    help="Mark this host as trusted, even though it does not have valid or any HTTPS.",
-)
-@click.option(
-    "--no-index",
-    is_flag=True,
-    help="Ignore package index (only looking at --find-links URLs instead)",
-)
-@click.option("-v", "--verbose", count=True, help="Show more output")
-@click.option("-q", "--quiet", count=True, help="Give less output")
-@click.option(
-    "--user", "user_only", is_flag=True, help="Restrict attention to user directory"
-)
-@click.option("--cert", help="Path to alternate CA bundle.")
-@click.option(
-    "--client-cert",
-    help="Path to SSL client certificate, a single file containing "
-    "the private key and the certificate in PEM format.",
-)
-@click.argument("src_files", required=False, type=click.Path(exists=True), nargs=-1)
-@click.option("--pip-args", help="Arguments to pass directly to pip install.")
-def cli(
-    ask,
-    dry_run,
-    force,
-    find_links,
-    index_url,
-    extra_index_url,
-    trusted_host,
-    no_index,
-    verbose,
-    quiet,
-    user_only,
-    cert,
-    client_cert,
-    src_files,
-    pip_args,
-):
-    """Synchronize virtual environment with requirements.txt."""
-    log.verbosity = verbose - quiet
+def add_args(parser):
+    # @click.command(context_settings={"help_option_names": ("-h", "--help")})
+    # @click.version_option()
+    parser.add_argument(
+        "-a",
+        "--ask",
+        action="store_true",
+        help="Show what would happen, then ask whether to continue",
+    )
+    parser.add_argument(
+        "-n",
+        "--dry-run",
+        action="store_true",
+        help="Only show what would happen, don't change anything",
+    )
+    parser.add_argument(
+        "--force", action="store_true", help="Proceed even if conflicts are found"
+    )
+    parser.add_argument(
+        "-f",
+        "--find-links",
+        action="append",
+        default=[],
+        help="Look for archives in this directory or on this HTML page",
+    )
+    parser.add_argument(
+        "-i", "--index-url", help="Change index URL (defaults to PyPI)",
+    )
+    parser.add_argument(
+        "--extra-index-url",
+        action="append",
+        default=[],
+        help="Add additional index URL to search",
+    )
+    parser.add_argument(
+        "--trusted-host",
+        action="append",
+        default=[],
+        help="Mark this host as trusted, even though it does not have valid or any HTTPS.",
+    )
+    parser.add_argument(
+        "--no-index",
+        action="store_true",
+        help="Ignore package index (only looking at --find-links URLs instead)",
+    )
+    parser.add_argument(
+        "-q", "--quiet", action="count", default=0, help="Give less output"
+    )
+    parser.add_argument(
+        "--user",
+        dest="user_only",
+        action="store_true",
+        help="Restrict attention to user directory",
+    )
+    parser.add_argument("--cert", help="Path to alternate CA bundle.")
+    parser.add_argument(
+        "--client-cert",
+        help="Path to SSL client certificate, a single file containing "
+        "the private key and the certificate in PEM format.",
+    )
+    parser.add_argument("src_files", nargs="*")
+    parser.add_argument("--pip-args", help="Arguments to pass directly to pip install.")
 
+
+def cli(args):
+    """Synchronize virtual environment with requirements.txt."""
+    log.verbosity = args.verbose - args.quiet
+
+    src_files = args.src_files
     if not src_files:
         if os.path.exists(DEFAULT_REQUIREMENTS_FILE):
             src_files = (DEFAULT_REQUIREMENTS_FILE,)
@@ -101,7 +102,7 @@ def cli(
             "and can cause weird behaviour. You probably meant to use "
             "the corresponding *.txt file?"
         )
-        if force:
+        if args.force:
             log.warning("WARNING: " + msg)
         else:
             log.error("ERROR: " + msg)
@@ -119,32 +120,32 @@ def cli(
     )
 
     try:
-        requirements = sync.merge(requirements, ignore_conflicts=force)
+        requirements = sync.merge(requirements, ignore_conflicts=args.force)
     except PipToolsError as e:
         log.error(str(e))
         sys.exit(2)
 
-    installed_dists = get_installed_distributions(skip=[], user_only=user_only)
+    installed_dists = get_installed_distributions(skip=[], user_only=args.user_only)
     to_install, to_uninstall = sync.diff(requirements, installed_dists)
 
     install_flags = _compose_install_flags(
         finder,
-        no_index=no_index,
-        index_url=index_url,
-        extra_index_url=extra_index_url,
-        trusted_host=trusted_host,
-        find_links=find_links,
-        user_only=user_only,
-        cert=cert,
-        client_cert=client_cert,
-    ) + shlex.split(pip_args or "")
+        no_index=args.no_index,
+        index_url=args.index_url,
+        extra_index_url=args.extra_index_url,
+        trusted_host=args.trusted_host,
+        find_links=args.find_links,
+        user_only=args.user_only,
+        cert=args.cert,
+        client_cert=args.client_cert,
+    ) + shlex.split(args.pip_args or "")
     sys.exit(
         sync.sync(
             to_install,
             to_uninstall,
-            dry_run=dry_run,
+            dry_run=args.dry_run,
             install_flags=install_flags,
-            ask=ask,
+            ask=args.ask,
         )
     )
 

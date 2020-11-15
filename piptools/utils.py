@@ -1,18 +1,18 @@
 # coding: utf-8
 from __future__ import absolute_import, division, print_function, unicode_literals
 
+import argparse
 import sys
 from collections import OrderedDict
 from itertools import chain
 
-from click.utils import LazyFile
 from pip._internal.req.constructors import install_req_from_line
 from pip._internal.utils.misc import redact_auth_from_url
 from pip._internal.vcs import is_url
 from pip._vendor import six
 from pip._vendor.six.moves import shlex_quote
 
-from .click import style
+from .colorama import colorama
 
 UNSAFE_PACKAGES = {"setuptools", "distribute", "pip"}
 COMPILE_EXCLUDE_OPTIONS = {
@@ -49,7 +49,7 @@ def key_from_req(req):
 
 
 def comment(text):
-    return style(text, fg="green")
+    return colorama.Fore.GREEN + text
 
 
 def make_install_requirement(name, version, extras, constraint=False):
@@ -293,7 +293,7 @@ def force_text(s):
     return s
 
 
-def get_compile_command(click_ctx):
+def get_compile_command(cli_args):
     """
     Returns a normalized compile command depending on cli context.
 
@@ -304,20 +304,25 @@ def get_compile_command(click_ctx):
         - removing one-off arguments like '--upgrade'
         - removing arguments that don't change build behaviour like '--verbose'
     """
-    from piptools.scripts.compile import cli
+    from piptools.scripts.compile import add_args
+
+    # TODO: MAYBE REPLACE argparse Namespace with something that has context of
+    # the command line?
+    parser = argparse.ArgumentParser()
+    add_args(parser)
 
     # Map of the compile cli options (option name -> click.Option)
-    compile_options = {option.name: option for option in cli.params}
+    compile_options = {option.dest: option for option in parser._actions}
 
     left_args = []
     right_args = []
 
-    for option_name, value in click_ctx.params.items():
+    for option_name, value in vars(cli_args).items():
         option = compile_options[option_name]
 
         # Collect variadic args separately, they will be added
         # at the end of the command later
-        if option.nargs < 0:
+        if not option.option_strings:
             # These will necessarily be src_files
             # Re-add click-stripped '--' if any start with '-'
             if any(val.startswith("-") and val != "-" for val in value):
@@ -325,8 +330,10 @@ def get_compile_command(click_ctx):
             right_args.extend([shlex_quote(force_text(val)) for val in value])
             continue
 
-        # Get the latest option name (usually it'll be a long name)
-        option_long_name = option.opts[-1]
+        # Get the first long option name.
+        for option_long_name in option.option_strings:
+            if option_long_name.startswith("--"):
+                break
 
         # Exclude one-off options (--upgrade/--upgrade-package/--rebuild/...)
         # or options that don't change compile behaviour (--verbose/--dry-run/...)
@@ -334,16 +341,12 @@ def get_compile_command(click_ctx):
             continue
 
         # Skip options without a value
-        if option.default is None and not value:
+        if option.default is None and value is None:
             continue
 
         # Skip options with a default value
         if option.default == value:
             continue
-
-        # Use a file name for file-like objects
-        if isinstance(value, LazyFile):
-            value = value.name
 
         # Convert value to the list
         if not isinstance(value, (tuple, list)):
@@ -351,11 +354,11 @@ def get_compile_command(click_ctx):
 
         for val in value:
             # Flags don't have a value, thus add to args true or false option long name
-            if option.is_flag:
+            if isinstance(val, bool):
                 # If there are false-options, choose an option name depending on a value
-                if option.secondary_opts:
+                if isinstance(option, argparse.BooleanOptionalAction):
                     # Get the latest false-option
-                    secondary_option_long_name = option.secondary_opts[-1]
+                    secondary_option_long_name = option.option_strings[-1]
                     arg = option_long_name if val else secondary_option_long_name
                 # There are no false-options, use true-option
                 else:
@@ -365,7 +368,7 @@ def get_compile_command(click_ctx):
             else:
                 if isinstance(val, six.string_types) and is_url(val):
                     val = redact_auth_from_url(val)
-                if option.name == "pip_args":
+                if option_name == "pip_args":
                     # shlex_quote would produce functional but noisily quoted results,
                     # e.g. --pip-args='--cache-dir='"'"'/tmp/with spaces'"'"''
                     # Instead, we try to get more legible quoting via repr:

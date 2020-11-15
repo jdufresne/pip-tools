@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 import collections
 import os
 import sys
@@ -6,8 +8,8 @@ from subprocess import check_call  # nosec
 
 from pip._internal.commands.freeze import DEV_PKGS
 from pip._internal.utils.compat import stdlib_pkgs
+from pip._vendor.six.moves import input
 
-from . import click
 from .exceptions import IncompatibleRequirements
 from .logging import log
 from .utils import (
@@ -24,6 +26,18 @@ PACKAGES_TO_IGNORE = (
     + list(stdlib_pkgs)
     + list(DEV_PKGS)
 )
+
+
+def confirm(prompt):
+    while True:
+        value = input(prompt + " [y/N]: ")
+        value = value.strip().lower()
+        if value in ("y", "yes"):
+            return True
+        elif value in ("", "n", "no"):
+            return False
+        else:
+            print("Error: invalid input")
 
 
 def dependency_tree(installed_keys, root_key):
@@ -167,18 +181,18 @@ def sync(to_install, to_uninstall, dry_run=False, install_flags=None, ask=False)
 
     if dry_run:
         if to_uninstall:
-            click.echo("Would uninstall:")
+            print("Would uninstall:")
             for pkg in sorted(to_uninstall):
-                click.echo("  {}".format(pkg))
+                print("  {}".format(pkg))
 
         if to_install:
-            click.echo("Would install:")
+            print("Would install:")
             for ireq in sorted(to_install, key=key_from_ireq):
-                click.echo("  {}".format(format_requirement(ireq)))
+                print("  {}".format(format_requirement(ireq)))
 
         exit_code = 1
 
-    if ask and click.confirm("Would you like to proceed with these changes?"):
+    if ask and confirm("Would you like to proceed with these changes?"):
         dry_run = False
         exit_code = 0
 

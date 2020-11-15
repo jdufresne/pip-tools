@@ -1,13 +1,14 @@
 # coding: utf-8
 from __future__ import unicode_literals
 
+import argparse
 import os
 
 import pytest
 from pip._vendor import six
 from pip._vendor.six.moves import shlex_quote
 
-from piptools.scripts.compile import cli as compile_cli
+from piptools.scripts import compile
 from piptools.utils import (
     as_tuple,
     dedup,
@@ -267,11 +268,11 @@ def test_force_text(value, expected_text):
         (["-o", "απαιτήσεις.txt"], "pip-compile --output-file='απαιτήσεις.txt'"),
         # Check '--pip-args' (forwarded) arguments
         (
-            ["--pip-args", "--disable-pip-version-check"],
+            ["--pip-args=--disable-pip-version-check"],
             "pip-compile --pip-args='--disable-pip-version-check'",
         ),
         (
-            ["--pip-args", "--disable-pip-version-check --isolated"],
+            ["--pip-args=--disable-pip-version-check --isolated"],
             "pip-compile --pip-args='--disable-pip-version-check --isolated'",
         ),
         pytest.param(
@@ -290,8 +291,12 @@ def test_get_compile_command(tmpdir_cwd, cli_args, expected_command):
     """
     Test general scenarios for the get_compile_command function.
     """
-    with compile_cli.make_context("pip-compile", cli_args) as ctx:
-        assert get_compile_command(ctx) == expected_command
+    # TODO ADD A COMMAND CLASS TO MAKE THIS A SINGLE METHOD?
+    parser = argparse.ArgumentParser()
+    compile.add_args(parser)
+    args = parser.parse_args(cli_args)
+    # YUP DO THE ABOVE TODO!!
+    assert get_compile_command(args) == expected_command
 
 
 def test_get_compile_command_escaped_filenames(tmpdir_cwd):

@@ -25,7 +25,6 @@ from pip._internal.utils.urls import path_to_url, url_to_path
 from pip._vendor.requests import RequestException
 
 from .._compat import PIP_VERSION, TemporaryDirectory, contextlib
-from ..click import progressbar
 from ..exceptions import NoCandidateFound
 from ..logging import log
 from ..utils import (
@@ -425,6 +424,7 @@ class PyPIRepository(BaseRepository):
                 bar_template = "{prefix}  |%(bar)s| %(info)s".format(
                     prefix=" " * log.current_indent
                 )
+                # TODO!!!
                 context_manager = progressbar(
                     chunks,
                     length=iter_length,

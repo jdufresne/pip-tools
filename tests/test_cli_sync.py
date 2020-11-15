@@ -3,7 +3,7 @@ import sys
 import mock
 import pytest
 
-from piptools.scripts.sync import DEFAULT_REQUIREMENTS_FILE, cli
+from piptools.scripts import sync
 
 from .utils import invoke
 
@@ -15,7 +15,7 @@ def test_run_as_module_sync():
 
     # Should have run pip-compile successfully.
     assert status == 0
-    assert out.startswith(b"Usage:")
+    assert out.startswith(b"usage:")
     assert b"Synchronize virtual environment with" in out
     assert err == b""
 
@@ -27,7 +27,7 @@ def test_quiet_option(check_call, runner):
     with open("requirements.txt", "w") as req_in:
         req_in.write("six==1.10.0")
 
-    out = runner.invoke(cli, ["-q"])
+    out = runner.invoke(sync, ["-q"])
     assert out.exit_code == 0
     assert out.stdout == ""
     assert out.stderr == ""
@@ -47,7 +47,7 @@ def test_quiet_option_when_up_to_date(check_call, runner):
         pass
 
     with mock.patch("piptools.sync.diff", return_value=(set(), set())):
-        out = runner.invoke(cli, ["-q"])
+        out = runner.invoke(sync, ["-q"])
 
     assert out.exit_code == 0
     assert out.stdout == ""
@@ -60,7 +60,7 @@ def test_no_requirements_file(runner):
     It should raise an error if there are no input files
     or a requirements.txt file does not exist.
     """
-    out = runner.invoke(cli)
+    out = runner.invoke(sync)
 
     assert out.exit_code == 2
     assert out.stdout == ""
@@ -74,7 +74,7 @@ def test_input_files_with_dot_in_extension(runner):
     with open("requirements.in", "w") as req_in:
         req_in.write("six==1.10.0")
 
-    out = runner.invoke(cli, ["requirements.in"])
+    out = runner.invoke(sync, ["requirements.in"])
 
     assert out.exit_code == 2
     assert out.stdout == ""
@@ -91,7 +91,7 @@ def test_force_files_with_dot_in_extension(runner):
         req_in.write("six==1.10.0")
 
     with mock.patch("piptools.sync.check_call"):
-        out = runner.invoke(cli, ["requirements.in", "--force"])
+        out = runner.invoke(sync, ["requirements.in", "--force"])
 
     assert out.exit_code == 0
     assert out.stdout == ""
@@ -119,7 +119,7 @@ def test_merge_error(req_lines, should_raise, runner):
             req_in.write(line + "\n")
 
     with mock.patch("piptools.sync.check_call"):
-        out = runner.invoke(cli, ["-n"])
+        out = runner.invoke(sync, ["-n"])
 
     if should_raise:
         assert out.exit_code == 2
@@ -155,7 +155,7 @@ def test_merge_error(req_lines, should_raise, runner):
         (["--cert", "foo.crt"], ["--cert", "foo.crt"]),
         (["--client-cert", "foo.pem"], ["--client-cert", "foo.pem"]),
         (
-            ["--pip-args", "--no-cache-dir --no-deps --no-warn-script-location"],
+            ["--pip-args=--no-cache-dir --no-deps --no-warn-script-location"],
             ["--no-cache-dir", "--no-deps", "--no-warn-script-location"],
         ),
         (["--pip-args='--cache-dir=/tmp'"], ["--cache-dir=/tmp"]),
@@ -173,7 +173,7 @@ def test_pip_install_flags(check_call, cli_flags, expected_install_flags, runner
     with open("requirements.txt", "w") as req_in:
         req_in.write("six==1.10.0")
 
-    out = runner.invoke(cli, cli_flags)
+    out = runner.invoke(sync, cli_flags)
 
     assert out.exit_code == 0
     assert out.stdout == ""
@@ -203,11 +203,11 @@ def test_pip_install_flags_in_requirements_file(check_call, runner, install_flag
     """
     Test the options from requirements.txt file pass to the pip install command.
     """
-    with open(DEFAULT_REQUIREMENTS_FILE, "w") as reqs:
+    with open(sync.DEFAULT_REQUIREMENTS_FILE, "w") as reqs:
         reqs.write(" ".join(install_flags) + "\n")
         reqs.write("six==1.10.0")
 
-    out = runner.invoke(cli)
+    out = runner.invoke(sync)
 
     assert out.exit_code == 0
     assert out.stdout == ""
@@ -229,7 +229,7 @@ def test_sync_ask_declined(check_call, runner):
     with open("requirements.txt", "w") as req_in:
         req_in.write("small-fake-a==1.10.0")
 
-    out = runner.invoke(cli, ["--ask"], input="n\n")
+    out = runner.invoke(sync, ["--ask"], input="n\n")
 
     assert out.exit_code == 1
     assert "Would uninstall:" in out.stdout
@@ -247,7 +247,7 @@ def test_sync_ask_accepted(check_call, runner):
     with open("requirements.txt", "w") as req_in:
         req_in.write("small-fake-a==1.10.0")
 
-    out = runner.invoke(cli, ["--ask", "--dry-run"], input="y\n")
+    out = runner.invoke(sync, ["--ask", "--dry-run"], input="y\n")
 
     assert out.exit_code == 0
     assert "Would uninstall:" in out.stdout
@@ -262,7 +262,7 @@ def test_sync_dry_run_returns_non_zero_exit_code(runner):
     with open("requirements.txt", "w") as req_in:
         req_in.write("small-fake-a==1.10.0")
 
-    out = runner.invoke(cli, ["--dry-run"])
+    out = runner.invoke(sync, ["--dry-run"])
 
     assert out.exit_code == 1
     assert "Would uninstall:" in out.stdout

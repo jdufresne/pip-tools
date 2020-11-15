@@ -3,13 +3,21 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 import contextlib
 import logging
+import re
 import sys
 
-from . import click
+from .colorama import colorama
 
 # Initialise the builtin logging module for other component using it.
 # Ex: pip
 logging.basicConfig()
+
+# TODO: CAN WE DO BETTER?
+_ansi_re = re.compile(r"\033\[[;?0-9]*[a-zA-Z]")
+
+
+def unstyle(value):
+    return _ansi_re.sub("", value)
 
 
 class LogContext(object):
@@ -20,26 +28,25 @@ class LogContext(object):
         self.current_indent = 0
         self._indent_width = indent_width
 
-    def log(self, message, *args, **kwargs):
-        kwargs.setdefault("err", True)
+    def log(self, message):
         prefix = " " * self.current_indent
-        click.secho(prefix + message, *args, **kwargs)
+        if not sys.stderr.isatty():
+            message = unstyle(message)
+        print(prefix + message, file=sys.stderr)
 
-    def debug(self, *args, **kwargs):
+    def debug(self, message):
         if self.verbosity >= 1:
-            self.log(*args, **kwargs)
+            self.log(message)
 
-    def info(self, *args, **kwargs):
+    def info(self, message):
         if self.verbosity >= 0:
-            self.log(*args, **kwargs)
+            self.log(message)
 
-    def warning(self, *args, **kwargs):
-        kwargs.setdefault("fg", "yellow")
-        self.log(*args, **kwargs)
+    def warning(self, message):
+        self.log(colorama.Fore.YELLOW + message)
 
-    def error(self, *args, **kwargs):
-        kwargs.setdefault("fg", "red")
-        self.log(*args, **kwargs)
+    def error(self, message):
+        self.log(colorama.Fore.RED + message)
 
     def _indent(self):
         self.current_indent += self._indent_width
