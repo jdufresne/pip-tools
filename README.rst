@@ -463,15 +463,6 @@ Other useful tools
 .. _Python extension for VS Code: https://marketplace.visualstudio.com/items?itemName=ms-python.python
 .. _pip-requirements.el: https://github.com/Wilfred/pip-requirements.el
 
-
-Deprecations
-============
-
-This section lists ``pip-tools`` features that are currently deprecated.
-
-- ``--index/--no-index`` command-line options, use instead
-  ``--emit-index-url/--no-emit-index-url`` (since 5.2.0).
-
 Versions and compatibility
 ==========================
 
