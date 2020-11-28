@@ -1,14 +1,7 @@
 name: CI
 
 on:
-  pull_request:
-  push:
-    branches:
-      - master
-    tags:
-  schedule:
-    # Run everyday at 03:53 UTC
-    - cron: 53 3 * * *
+  - push
 
 jobs:
   test:
@@ -18,30 +11,16 @@ jobs:
       fail-fast: false
       matrix:
         os:
-          - Ubuntu
           - Windows
-          - macOS
         python-version:
-          - 3.9
-          - 2.7
-          - 3.5
-          - 3.6
-          - 3.7
-          - 3.8
           - pypy3
           - pypy2
         pip-version:
           - "latest"
           - "previous"
-        include:
-          - os: Ubuntu
-            python-version: 3.10-dev
-            pip-version: latest
 
     env:
-      PY_COLORS: 1
       TOXENV: pip${{ matrix.pip-version }}-coverage
-      TOX_PARALLEL_NO_SPINNER: 1
     steps:
       - uses: actions/checkout@master
       - name: Set up Python ${{ matrix.python-version }} from GitHub
