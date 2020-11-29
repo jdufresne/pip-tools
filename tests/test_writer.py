@@ -1,7 +1,8 @@
+import argparse
 import pytest
 from pip._internal.models.format_control import FormatControl
 
-from piptools.scripts.compile import cli
+from piptools.scripts import compile
 from piptools.utils import comment
 from piptools.writer import (
     MESSAGE_UNHASHED_PACKAGE,
@@ -16,19 +17,23 @@ def writer(tmpdir_cwd):
     with open("src_file", "w"), open("src_file2", "w"):
         pass
 
-    cli_args = [
+    # TODO: Wrap command in a class to make this easier?
+    args = [
         "--dry-run",
         "--output-file",
         "requirements.txt",
         "src_file",
         "src_file2",
     ]
+    parser = argparse.ArgumentParser(compile.__name__)
+    compile.add_args(parser)
+    cli_args = parser.parse_args(args)
 
-    with cli.make_context("pip-compile", cli_args) as ctx:
+    with open(cli_args.output_file, "w+b") as fp:
         writer = OutputWriter(
             src_files=["src_file", "src_file2"],
-            dst_file=ctx.params["output_file"],
-            click_ctx=ctx,
+            dst_file=fp,
+            cli_args=cli_args,
             dry_run=True,
             emit_header=True,
             emit_index_url=True,

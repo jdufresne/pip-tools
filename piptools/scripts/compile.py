@@ -149,15 +149,15 @@ def add_args(parser):
         action="store_true",
         help="Generate pip 8 style hashes in the resulting requirements file.",
     )
-    # @click.option(
-    #     "--reuse-hashes/--no-reuse-hashes",
-    #     is_flag=True,
-    #     default=True,
-    #     help=(
-    #         "Improve the speed of --generate-hashes by reusing the hashes from an "
-    #         "existing output file."
-    #     ),
-    # )
+    parser.add_argument(
+        "--reuse-hashes",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help=(
+            "Improve the speed of --generate-hashes by reusing the hashes from an "
+            "existing output file."
+        ),
+    )
     parser.add_argument(
         "--max-rounds",
         type=int,
@@ -217,8 +217,8 @@ def cli(args):
             src_file = src_files[0]
             if src_file == "-":
                 # An output file must be provided for stdin
-                raise click.BadParameter(
-                    "--output-file is required if input is from stdin"
+                log.error(
+                    "Error: --output-file is required if input is from stdin"
                 )
             elif src_file == "setup.py":
                 # Use default requirements output file if there is a setup.py
@@ -293,7 +293,7 @@ def cli(args):
             else:
                 existing_pins[key] = ireq
         repository = LocalRequirementsRepository(
-            existing_pins, repository, reuse_hashes=reuse_hashes
+            existing_pins, repository, reuse_hashes=args.reuse_hashes
         )
 
     ###

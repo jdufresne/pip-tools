@@ -415,32 +415,36 @@ class PyPIRepository(BaseRepository):
         log.debug("Hashing {}".format(link.show_url))
         h = hashlib.new(FAVORITE_HASH)
         with open_local_or_remote_file(link, self.session) as f:
+            h.update(f.stream.read())
+            # TODO: simplify open_local_or_remote_file?
+
+
             # Chunks to iterate
-            chunks = iter(lambda: f.stream.read(FILE_CHUNK_SIZE), b"")
+            # chunks = iter(lambda: f.stream.read(FILE_CHUNK_SIZE), b"")
 
             # Choose a context manager depending on verbosity
-            if log.verbosity >= 1:
-                iter_length = f.size / FILE_CHUNK_SIZE if f.size else None
-                bar_template = "{prefix}  |%(bar)s| %(info)s".format(
-                    prefix=" " * log.current_indent
-                )
-                # TODO!!!
-                context_manager = progressbar(
-                    chunks,
-                    length=iter_length,
-                    # Make it look like default pip progress bar
-                    fill_char="█",
-                    empty_char=" ",
-                    bar_template=bar_template,
-                    width=32,
-                )
-            else:
-                context_manager = contextlib.nullcontext(chunks)
+            # if log.verbosity >= 1:
+            #     iter_length = f.size / FILE_CHUNK_SIZE if f.size else None
+            #     bar_template = "{prefix}  |%(bar)s| %(info)s".format(
+            #         prefix=" " * log.current_indent
+            #     )
+            #     # TODO!!!
+            #     context_manager = progressbar(
+            #         chunks,
+            #         length=iter_length,
+            #         # Make it look like default pip progress bar
+            #         fill_char="█",
+            #         empty_char=" ",
+            #         bar_template=bar_template,
+            #         width=32,
+            #     )
+            # else:
+            #     context_manager = contextlib.nullcontext(chunks)
 
             # Iterate over the chosen context manager
-            with context_manager as bar:
-                for chunk in bar:
-                    h.update(chunk)
+            # with context_manager as bar:
+            #     for chunk in bar:
+            #         h.update(chunk)
         return ":".join([FAVORITE_HASH, h.hexdigest()])
 
     @contextmanager
