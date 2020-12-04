@@ -2,7 +2,7 @@ import collections
 import os
 import sys
 import tempfile
-from subprocess import run  # nosec
+from subprocess import run
 
 from pip._internal.commands.freeze import DEV_PKGS
 from pip._internal.utils.compat import stdlib_pkgs
@@ -188,7 +188,7 @@ def sync(to_install, to_uninstall, dry_run=False, install_flags=None, ask=False)
 
     if not dry_run:
         if to_uninstall:
-            run(  # nosec
+            run(
                 [
                     sys.executable,
                     "-m",
@@ -216,7 +216,7 @@ def sync(to_install, to_uninstall, dry_run=False, install_flags=None, ask=False)
             tmp_req_file.close()
 
             try:
-                run(  # nosec
+                run(
                     [
                         sys.executable,
                         "-m",
