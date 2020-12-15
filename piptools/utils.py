@@ -1,13 +1,30 @@
 import shlex
 from collections import OrderedDict
 from itertools import chain
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Iterable,
+    Iterator,
+    List,
+    Optional,
+    Tuple,
+    TypeVar,
+    Union,
+)
 
 from click.utils import LazyFile
+from pip._internal.req import InstallRequirement
 from pip._internal.req.constructors import install_req_from_line
 from pip._internal.utils.misc import redact_auth_from_url
 from pip._internal.vcs import is_url
+from pip._vendor.packaging.requirements import Requirement
+from pip._vendor.pkg_resources import Distribution
 
 from .click import style
+
+_T = TypeVar("_T")
 
 UNSAFE_PACKAGES = {"setuptools", "distribute", "pip"}
 COMPILE_EXCLUDE_OPTIONS = {
@@ -22,17 +39,18 @@ COMPILE_EXCLUDE_OPTIONS = {
 }
 
 
-def key_from_ireq(ireq):
+def key_from_ireq(ireq: InstallRequirement) -> str:
     """Get a standardized key for an InstallRequirement."""
     if ireq.req is None and ireq.link is not None:
         return str(ireq.link)
-    else:
-        return key_from_req(ireq.req)
+    assert ireq.req is not None
+    return key_from_req(ireq.req)
 
 
-def key_from_req(req):
+def key_from_req(req: Union[Distribution, Requirement]) -> str:
     """Get an all-lowercase version of the requirement's name."""
-    if hasattr(req, "key"):
+    key: str
+    if isinstance(req, Distribution):
         # from pkg_resources, such as installed dists for pip-sync
         key = req.key
     else:
@@ -47,7 +65,9 @@ def comment(text: str) -> str:
     return style(text, fg="green")
 
 
-def make_install_requirement(name, version, extras, constraint=False):
+def make_install_requirement(
+    name: str, version: str, extras: Iterable[str], constraint: bool = False
+) -> InstallRequirement:
     # If no extras are specified, the extras string is blank
     extras_string = ""
     if extras:
@@ -59,7 +79,7 @@ def make_install_requirement(name, version, extras, constraint=False):
     )
 
 
-def is_url_requirement(ireq):
+def is_url_requirement(ireq: InstallRequirement) -> bool:
     """
     Return True if requirement was specified as a path or URL.
     ireq.original_link will have been set by InstallRequirement.__init__
@@ -67,14 +87,20 @@ def is_url_requirement(ireq):
     return bool(ireq.original_link)
 
 
-def format_requirement(ireq, marker=None, hashes=None):
+def format_requirement(
+    ireq: InstallRequirement,
+    marker: Optional[str] = None,
+    hashes: Optional[Iterable[str]] = None,
+) -> str:
     """
     Generic formatter for pretty printing InstallRequirements to the terminal
     in a less verbose way than using its `__str__` method.
     """
     if ireq.editable:
+        assert ireq.link is not None
         line = f"-e {ireq.link.url}"
     elif is_url_requirement(ireq):
+        assert ireq.link is not None
         line = ireq.link.url
     else:
         line = str(ireq.req).lower()
@@ -89,7 +115,7 @@ def format_requirement(ireq, marker=None, hashes=None):
     return line
 
 
-def format_specifier(ireq):
+def format_specifier(ireq: InstallRequirement) -> str:
     """
     Generic formatter for pretty printing the specifier part of
     InstallRequirements to the terminal.
@@ -100,7 +126,7 @@ def format_specifier(ireq):
     return ",".join(str(s) for s in specs) or "<any>"
 
 
-def is_pinned_requirement(ireq):
+def is_pinned_requirement(ireq: InstallRequirement) -> bool:
     """
     Returns whether an InstallRequirement is a "pinned" requirement.
 
@@ -127,7 +153,7 @@ def is_pinned_requirement(ireq):
     return spec.operator in {"==", "==="} and not spec.version.endswith(".*")
 
 
-def as_tuple(ireq):
+def as_tuple(ireq: InstallRequirement) -> Tuple[str, str, Tuple[str, ...]]:
     """
     Pulls out the (name: str, version:str, extras:(str)) tuple from
     the pinned InstallRequirement.
@@ -141,12 +167,19 @@ def as_tuple(ireq):
     return name, version, extras
 
 
-def flat_map(fn, collection):
+def flat_map(fn: Callable, collection: Iterable) -> Iterator:
     """Map a function over a collection and flatten the result by one-level"""
     return chain.from_iterable(map(fn, collection))
 
 
-def lookup_table(values, key=None, keyval=None, unique=False, use_lists=False):
+# TODO: Use Literal?
+def lookup_table(
+    values: Iterable[str],
+    key: Optional[Callable] = None,
+    keyval: Optional[Callable] = None,
+    unique: bool = False,
+    use_lists: bool = False,
+) -> Dict[str, Union[str, List[str]]]:
     """
     Builds a dict-based lookup table (index) elegantly.
 
@@ -224,16 +257,16 @@ def lookup_table(values, key=None, keyval=None, unique=False, use_lists=False):
     return dict(lut)
 
 
-def dedup(iterable):
+def dedup(iterable: Iterable[_T]) -> Iterable[_T]:
     """Deduplicate an iterable object like iter(set(iterable)) but
     order-preserved.
     """
     return iter(OrderedDict.fromkeys(iterable))
 
 
-def name_from_req(req):
+def name_from_req(req: Union[Distribution, Requirement]) -> str:
     """Get the name of the requirement"""
-    if hasattr(req, "project_name"):
+    if isinstance(req, Distribution):
         # from pkg_resources, such as installed dists for pip-sync
         return req.project_name
     else:
@@ -241,7 +274,7 @@ def name_from_req(req):
         return req.name
 
 
-def get_hashes_from_ireq(ireq):
+def get_hashes_from_ireq(ireq: InstallRequirement) -> List[str]:
     """
     Given an InstallRequirement, return a list of string hashes in
     the format "{algorithm}:{hash}". Return an empty list if there are no hashes
@@ -254,7 +287,7 @@ def get_hashes_from_ireq(ireq):
     return result
 
 
-def force_text(s):
+def force_text(s: Any) -> str:
     """
     Return a string representing `s`.
     """

@@ -1,3 +1,7 @@
+from types import TracebackType
+from typing import Any, Optional, Type
+
+
 # Ported from python 3.7 contextlib.py
 class nullcontext:
     """Context manager that does no additional processing.
@@ -8,11 +12,16 @@ class nullcontext:
         # Perform operation, using optional_cm if condition is True
     """
 
-    def __init__(self, enter_result=None):
+    def __init__(self, enter_result: Any = None) -> None:
         self.enter_result = enter_result
 
-    def __enter__(self):
+    def __enter__(self) -> Any:
         return self.enter_result
 
-    def __exit__(self, *excinfo):
+    def __exit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_value: Optional[BaseException],
+        traceback: Optional[TracebackType],
+    ) -> None:
         pass

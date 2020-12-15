@@ -6,6 +6,7 @@ import os
 import tempfile
 from contextlib import contextmanager
 from shutil import rmtree
+from typing import List
 
 from pip._internal.cache import WheelCache
 from pip._internal.cli.progress_bars import BAR_TYPES
@@ -20,6 +21,7 @@ from pip._internal.utils.logging import indent_log, setup_logging
 from pip._internal.utils.misc import normalize_path
 from pip._internal.utils.temp_dir import TempDirectory, global_tempdir_manager
 from pip._internal.utils.urls import path_to_url, url_to_path
+from pip._vendor import six
 from pip._vendor.requests import RequestException
 
 from .._compat import PIP_VERSION, contextlib
@@ -50,7 +52,7 @@ class PyPIRepository(BaseRepository):
     changed/configured on the Finder.
     """
 
-    def __init__(self, pip_args, cache_dir):
+    def __init__(self, pip_args: List[six.text_type], cache_dir: str) -> None:
         # Use pip's parser for pip.conf management and defaults.
         # General options (find_links, index_url, extra_index_url, trusted_host,
         # and pre) are deferred to pip.

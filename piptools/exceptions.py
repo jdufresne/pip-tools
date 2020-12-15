@@ -1,3 +1,8 @@
+from typing import List
+
+from pip._internal.index.package_finder import PackageFinder
+from pip._internal.models.candidate import InstallationCandidate
+from pip._internal.req import InstallRequirement
 from pip._internal.utils.misc import redact_auth_from_url
 
 
@@ -6,18 +11,25 @@ class PipToolsError(Exception):
 
 
 class NoCandidateFound(PipToolsError):
-    def __init__(self, ireq, candidates_tried, finder):
+    def __init__(
+        self,
+        ireq: InstallRequirement,
+        candidates_tried: List[InstallationCandidate],
+        finder: PackageFinder,
+    ) -> None:
         self.ireq = ireq
         self.candidates_tried = candidates_tried
         self.finder = finder
 
-    def __str__(self):
+    def __str__(self) -> str:
         versions = []
         pre_versions = []
 
         for candidate in sorted(self.candidates_tried):
             version = str(candidate.version)
-            if candidate.version.is_prerelease:
+            # TODO: Use normal attribute access after packaging drops
+            # LegacyVersion: https://github.com/pypa/packaging/issues/321
+            if getattr(candidate.version, "is_prerelease"):
                 pre_versions.append(version)
             else:
                 versions.append(version)
@@ -57,10 +69,10 @@ class NoCandidateFound(PipToolsError):
 
 
 class IncompatibleRequirements(PipToolsError):
-    def __init__(self, ireq_a, ireq_b):
+    def __init__(self, ireq_a: InstallRequirement, ireq_b: InstallRequirement) -> None:
         self.ireq_a = ireq_a
         self.ireq_b = ireq_b
 
-    def __str__(self):
+    def __str__(self) -> str:
         message = "Incompatible requirements found: {} and {}"
         return message.format(self.ireq_a, self.ireq_b)

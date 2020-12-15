@@ -1,6 +1,9 @@
 import os
 import re
 from itertools import chain
+from typing import Dict, List, Optional, Union
+
+from pip._internal.req import InstallRequirement
 
 from .click import unstyle
 from .logging import log
@@ -38,10 +41,10 @@ MESSAGE_UNINSTALLABLE = (
 strip_comes_from_line_re = re.compile(r" \(line \d+\)$")
 
 
-def _comes_from_as_string(ireq):
-    if isinstance(ireq.comes_from, str):
-        return strip_comes_from_line_re.sub("", ireq.comes_from)
-    return key_from_ireq(ireq.comes_from)
+def _comes_from_as_string(comes_from: Union[str, InstallRequirement]) -> str:
+    if isinstance(comes_from, str):
+        return strip_comes_from_line_re.sub("", comes_from)
+    return key_from_ireq(comes_from)
 
 
 class OutputWriter:
@@ -207,7 +210,12 @@ class OutputWriter:
                 self.dst_file.write(unstyle(line).encode())
                 self.dst_file.write(os.linesep.encode())
 
-    def _format_requirement(self, ireq, marker=None, hashes=None):
+    def _format_requirement(
+        self,
+        ireq: InstallRequirement,
+        marker: Optional[str] = None,
+        hashes: Optional[Dict[InstallRequirement, List[str]]] = None,
+    ):
         ireq_hashes = (hashes if hashes is not None else {}).get(ireq)
 
         line = format_requirement(ireq, marker=marker, hashes=ireq_hashes)
@@ -219,7 +227,7 @@ class OutputWriter:
         required_by = set()
         if hasattr(ireq, "_source_ireqs"):
             required_by |= {
-                _comes_from_as_string(src_ireq)
+                _comes_from_as_string(src_ireq.comes_from)
                 for src_ireq in ireq._source_ireqs
                 if src_ireq.comes_from
             }
